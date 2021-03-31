@@ -26,7 +26,7 @@ def generate_regions(fasta_index_file, size, chunks=False, chromosomes=None, bed
                 if region_end > chrom_length:
                     region_end = chrom_length
                 start = str(region_start)
-                end = str(region_end)
+                end = str(region_end-1)
                 if bed_files is not None:
                     region = str(ceil(region_end / region_size))
                     file_path = f"{bed_files}.{chrom_name}.region.{region}.bed"

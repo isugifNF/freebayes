@@ -12,7 +12,7 @@ samtools19_container = 'quay.io/biocontainers/samtools:1.9--h10a08f8_12'
      log.info """
       Usage:
       The typical command for running the pipeline is as follows:
-      nextflow run isugifNF/freebayes -profile nova,singularity
+	nextflow run main.nf --fastaReference genomeFile.fasta --bam /full/path/input/file.bam --vcf outputPrefix -profile singularity,nova
 
       Mandatory arguments:
 
