@@ -1,0 +1,6 @@
+work
+out_dir
+sample-348.sam.alignSorted.bam
+temp.fasta*
+.nextflow*
+
