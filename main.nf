@@ -27,7 +27,7 @@ samtools19_container = 'quay.io/biocontainers/samtools:1.9--h10a08f8_12'
 	--bam			Bam input file ("In.bam")
   	--options 		Freebayes options ("--min-mapping-quality 0 --min-coverage 3 --min-supporting-allele-qsum 0 --ploidy 2 --min-alternate-fraction 0.2 --max-complex-gap 0")
   	--regionSize 		Size of the regions to split the file into (25000)
-
+	--windowSize		size of windows to run freebayes on
      """
 }
 
@@ -50,7 +50,7 @@ process createFastaIndex {
 
   container = "$samtools19_container"
 
-  publishDir "${params.outdir}", mode: 'copy', pattern: '*/*.txt'
+  publishDir "${params.outdir}", mode: 'copy', pattern: '*fai'
 
   input:
   path genome from genome_samtools
@@ -79,13 +79,13 @@ process createIntervals {
 
         script:
         """
-        fasta_generate_regions.py ${fai} 100000 
+        fasta_generate_regions.py ${fai} ${params.windowSize}
         """
 
 }
 
 process runFreebayes {
-
+	errorStrategy 'retry' 
 	container = "$freebayes_container"
 
 	publishDir "${params.outdir}", mode: 'copy', pattern: '${params.vcf}"_"${region}".vcf' 
@@ -110,7 +110,7 @@ process runFreebayes {
 
 process combineVCF {
 	
-	publishDir "${params.outdir}", mode: 'copy',pattern: 'combine.vcf'	
+	publishDir "${params.outdir}", mode: 'copy',pattern: '*.vcf'	
 	
 	input:
 	file(vcfs) from window_vcf.collect()
@@ -118,7 +118,7 @@ process combineVCF {
 	script:
 
 	"""
-	cat $vcfs |  vcffirstheader > combined.vcf 
+	cat $vcfs |  vcffirstheader > ${params.vcf}.vcf 
 	"""
 }
 
