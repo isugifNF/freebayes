@@ -59,10 +59,10 @@ process createFastaIndex {
 process createIntervals {
   input:
   path(fai)
-  
+
   output:
   stdout()
-  
+
   script:
   """
   fasta_generate_regions.py ${fai} ${params.windowSize}
@@ -70,15 +70,17 @@ process createIntervals {
 }
 
 process runFreebayes {
+  tag "$region"
   errorStrategy 'retry'
   container = "$freebayes_container"
-  
-  output:
-  file('*.vcf') into window_vcf
-  
+  publishDir "${params.outdir}", mode: 'copy'
+
   input:
   tuple path(fai), path(genome), path(bam), val(region)
-  
+
+  output:
+  path("*.vcf")
+
   script:
   """
   freebayes --region ${region} ${params.options} --bam ${bam} --vcf ${params.vcf}"_"${region}".vcf" --fasta-reference ${genome}
@@ -86,14 +88,15 @@ process runFreebayes {
 }
 
 process combineVCF {
-  
   publishDir "${params.outdir}", mode: 'copy',pattern: "${params.vcf}.vcf"
-  
+
   input:
   path(vcfs)
-  
+
+  output:
+  path("${params.vcf}.vcf")
+
   script:
-  
   """
   cat $vcfs |  vcffirstheader > ${params.vcf}.vcf
   """
@@ -111,7 +114,7 @@ def isuGIFHeader() {
   c_cyan = params.monochrome_logs ? '' : "\033[1;96m";
   c_white = params.monochrome_logs ? '' : "\033[1;97m";
   c_red = params.monochrome_logs ? '' :  "\033[1;91m";
-  
+
   return """    -${c_dim}--------------------------------------------------${c_reset}-
   ${c_white}                                ${c_red   }\\\\------${c_yellow}---//       ${c_reset}
   ${c_white}  ___  ___        _   ___  ___  ${c_red   }  \\\\---${c_yellow}--//        ${c_reset}
@@ -128,7 +131,7 @@ workflow {
   ref_ch = channel.fromPath(params.fastaReference, checkIfExists:true)
   bam_ch = channel.fromPath(params.bam, checkIfExists:true)
 
-  windows_ch = ref_ch | createFastaIndex | createIntervals | splitText(){it.trim()} 
+  windows_ch = ref_ch | createFastaIndex | createIntervals | splitText(){it.trim()}
 
   createFastaIndex.out |
     combine(ref_ch) |
