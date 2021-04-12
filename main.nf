@@ -88,7 +88,6 @@ process runFreebayes {
 	errorStrategy 'retry' 
 	container = "$freebayes_container"
 
-	publishDir "${params.outdir}", mode: 'copy', pattern: '${params.vcf}"_"${region}".vcf' 
 	
 	output: 
 	file('*.vcf') into window_vcf  
@@ -110,7 +109,7 @@ process runFreebayes {
 
 process combineVCF {
 	
-	publishDir "${params.outdir}", mode: 'copy',pattern: '*.vcf'	
+	publishDir "${params.outdir}", mode: 'copy',pattern: "${params.vcf}.vcf"	
 	
 	input:
 	file(vcfs) from window_vcf.collect()
