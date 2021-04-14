@@ -12,24 +12,23 @@ samtools19_container = 'quay.io/biocontainers/samtools:1.9--h10a08f8_12'
 def helpMessage() {
     log.info isuGIFHeader()
     log.info """
-     Usage:
-     The typical command for running the pipeline is as follows:
- nextflow run main.nf --fastaReference genomeFile.fasta --bam /full/path/input/file.bam --vcf outputPrefix -profile singularity,nova
+    Usage:
+    The typical command for running the pipeline is as follows:
+    nextflow run main.nf --fastaReference genomeFile.fasta --bam /full/path/input/file.bam --vcf outputPrefix -profile singularity,nova
 
-     Mandatory arguments:
+    Mandatory arguments:
+     --fastqs           fastq files to run nanoplot on. (/data/*.fastq)
 
-     --fastqs                      fastq files to run nanoplot on. (/data/*.fastq)
-
-     Optional arguments:
- --help 	 		Display this help message
-   --outdir		Specify output directory ('./out_dir')
-   --queueSize		Max number of jobs submitted at one time (18)
-   --fasta-reference 	Input genome file to run freebayes on ("yourGenome.fasta")
-   --vcf			Output VCF file name ("out.vcf")
- --bam			Bam input file ("In.bam")
-   --options 		Freebayes options ("--min-mapping-quality 0 --min-coverage 3 --min-supporting-allele-qsum 0 --ploidy 2 --min-alternate-fraction 0.2 --max-complex-gap 0")
-   --regionSize 		Size of the regions to split the file into (25000)
- --windowSize		size of windows to run freebayes on
+    Optional arguments:
+     --help             Display this help message
+     --outdir           Specify output directory ('./out_dir')
+     --queueSize        Max number of jobs submitted at one time (18)
+     --fasta-reference 	Input genome file to run freebayes on ("yourGenome.fasta")
+     --vcf			       Output VCF file name ("out.vcf")
+     --bam			       Bam input file ("In.bam")
+     --options 		     Freebayes options ("--min-mapping-quality 0 --min-coverage 3 --min-supporting-allele-qsum 0 --ploidy 2 --min-alternate-fraction 0.2 --max-complex-gap 0")
+     --regionSize     Size of the regions to split the file into (25000)
+     --windowSize		  size of windows to run freebayes on
     """
 }
 
@@ -52,20 +51,21 @@ process createFastaIndex {
 
   script:
   """
-  samtools faidx ${genome}
+  $samtools_app faidx ${genome}
   """
 }
 
 process createIntervals {
+  publishDir "${params.outdir}", mode: 'copy', pattern: '*bed'
   input:
   path(fai)
 
   output:
-  stdout()
+  path("*_coords.bed")
 
   script:
   """
-  fasta_generate_regions.py ${fai} ${params.windowSize}
+  fasta_generate_regions.py ${fai} ${params.windowSize} > ${fai.simpleName}_coords.bed
   """
 }
 
@@ -73,7 +73,7 @@ process runFreebayes {
   tag "$region"
   errorStrategy 'retry'
   container = "$freebayes_container"
-  publishDir "${params.outdir}", mode: 'copy'
+  publishDir "${params.outdir}/01_FreebayesVcfs", mode: 'copy'
 
   input:
   tuple path(fai), path(genome), path(bam), val(region)
@@ -83,12 +83,13 @@ process runFreebayes {
 
   script:
   """
-  freebayes --region ${region} ${params.options} --bam ${bam} --vcf ${params.vcf}"_"${region}".vcf" --fasta-reference ${genome}
+  $freebayes_app --region ${region} ${params.options} --bam ${bam} \
+    --vcf ${params.vcf}"_"${region}".vcf" --fasta-reference ${genome}
   """
 }
 
 process combineVCF {
-  publishDir "${params.outdir}", mode: 'copy',pattern: "${params.vcf}.vcf"
+  publishDir "${params.outdir}", mode: 'copy', pattern: "${params.vcf}.vcf"
 
   input:
   path(vcfs)
